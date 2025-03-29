@@ -12,8 +12,6 @@ const practiceRoutes = require('./routes/practiceRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 
 const app = express();
-
-// Middlewares
 app.use(cors());
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -28,7 +26,6 @@ app.use('/admin', adminRoutes);
 app.use('/practice', practiceRoutes);
 app.use('/quiz', quizRoutes);
 
-// Start server
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

@@ -24,9 +24,7 @@ class User {
         return rows[0];
     }
 
-    static async verifyUser(user_id) {
-        await db.query(`UPDATE users SET is_verified = 1 WHERE user_id = ?`, [user_id]);
-    }
+  
 
     static async blockUser(user_id) {
         await db.query(`UPDATE users SET is_blocked = 1 WHERE user_id = ?`, [user_id]);

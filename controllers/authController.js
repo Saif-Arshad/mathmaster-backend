@@ -10,6 +10,10 @@ const authController = {
     register: async (req, res) => {
         try {
             const { email, username, password, age } = req.body;
+            console.log("🚀 ~ register: ~ email:", email)
+            console.log("🚀 ~ register: ~ age:", age)
+            console.log("🚀 ~ register: ~ password:", password)
+            console.log("🚀 ~ register: ~ username:", username)
 
             if (!email || !username || !password || !age) {
                 return res.status(400).json({ message: 'All fields are required.' });
@@ -65,9 +69,9 @@ const authController = {
             }
 
             await db.query('UPDATE otps SET used = 1 WHERE otp_id = ?', [otpRow.otp_id]);
-            await User.verifyUser(user_id);
+            const user = await db.query(`UPDATE users SET is_verified = 1 WHERE user_id = ?`, [user_id])
 
-            res.json({ message: 'OTP verified successfully.' });
+            res.json({ message: 'OTP verified successfully.', user });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on OTP verification.' });
@@ -130,7 +134,8 @@ const authController = {
 
             res.json({
                 message: 'Login successful.',
-                token
+                token,
+                user
             });
         } catch (err) {
             console.error(err);
@@ -155,7 +160,12 @@ const authController = {
                 'INSERT INTO otps (user_id, code, expires_at) VALUES (?,?,?)',
                 [user.user_id, otpCode, expiresAt]
             );
-            await sendEmail(user.email, 'Reset Password OTP', `Your reset password OTP code is: ${otpCode}`);
+            const resetLink = `http://localhost:8080/new-password?otp=${otpCode}&userId=${user.user_id}`;
+            await sendEmail(
+                user.email, 
+                'Reset Password OTP', 
+                `Your reset password OTP code is: ${otpCode}\n\nOr click this link to reset your password: ${resetLink}`
+            );
 
             res.json({ message: 'Reset password OTP sent to your email.' });
         } catch (err) {

@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   age INT NOT NULL,
   is_verified TINYINT DEFAULT 0,
+  isFirstTimeUser TINYINT DEFAULT 1,
   is_blocked TINYINT DEFAULT 0,
   created_at DATETIME DEFAULT NOW(),
   updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
