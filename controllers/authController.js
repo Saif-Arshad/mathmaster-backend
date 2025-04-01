@@ -70,8 +70,9 @@ const authController = {
 
             await db.query('UPDATE otps SET used = 1 WHERE otp_id = ?', [otpRow.otp_id]);
             const user = await db.query(`UPDATE users SET is_verified = 1 WHERE user_id = ?`, [user_id])
+            const existingEmail = await User.findById(user_id);
 
-            res.json({ message: 'OTP verified successfully.', user });
+            res.json({ message: 'OTP verified successfully.', user: existingEmail });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on OTP verification.' });
@@ -162,8 +163,8 @@ const authController = {
             );
             const resetLink = `http://localhost:8080/new-password?otp=${otpCode}&userId=${user.user_id}`;
             await sendEmail(
-                user.email, 
-                'Reset Password OTP', 
+                user.email,
+                'Reset Password OTP',
                 `Your reset password OTP code is: ${otpCode}\n\nOr click this link to reset your password: ${resetLink}`
             );
 

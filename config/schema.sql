@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   age INT NOT NULL,
   is_verified TINYINT DEFAULT 0,
   is_blocked TINYINT DEFAULT 0,
+  initialPercentage Int DEFAULT 0,
   created_at DATETIME DEFAULT NOW(),
   updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
 );
