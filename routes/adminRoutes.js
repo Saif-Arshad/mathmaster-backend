@@ -4,10 +4,9 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const verifyAdmin = require('../middleware/verifyAdmin'); // see below if you want admin verification
 
-// Admin routes
-router.get('/users', verifyAdmin, adminController.getAllUsers);
-router.patch('/block-user/:user_id', verifyAdmin, adminController.blockUser);
-router.patch('/unblock-user/:user_id', verifyAdmin, adminController.unblockUser);
+router.get('/users', adminController.getAllUsers);
+router.patch('/block-user/:user_id', adminController.blockUser);
+router.patch('/unblock-user/:user_id', adminController.unblockUser);
 
 router.patch('/levels/passing-percentage/:level_id', verifyAdmin, adminController.setMinQuizPercentage);
 router.post('/levels', verifyAdmin, adminController.addLevel);
@@ -19,7 +18,8 @@ router.delete('/questions/:question_id', verifyAdmin, adminController.deleteQues
 router.put('/questions/:question_id', verifyAdmin, adminController.modifyQuestion);
 
 router.post('/regrade/:performance_id', verifyAdmin, adminController.regradeQuiz);
+router.post('/login', adminController.loginAdmin);
 router.get('/report', verifyAdmin, adminController.generateReport);
-router.post('/send-email', verifyAdmin, adminController.sendEmailToUser);
+router.post('/send-email', adminController.sendEmailToUser);
 
 module.exports = router;

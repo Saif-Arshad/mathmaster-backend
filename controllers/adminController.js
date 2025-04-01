@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const User = require('../models/User');
+const sendEmail = require('../utils/sendEmail');
 
 const adminController = {
     getAllUsers: async (req, res) => {
@@ -10,7 +11,29 @@ const adminController = {
             console.error(err);
             res.status(500).json({ message: 'Server error on get all users.' });
         }
+    }, loginAdmin: async (req, res) => {
+        try {
+            const { email, password } = req.body;
+
+            const [rows] = await db.query('SELECT * FROM admins WHERE email = ?', [email]);
+
+            if (rows.length === 0) {
+                return res.status(404).json({ message: 'Admin not found.' });
+            }
+            const admin = rows[0];
+            if (admin.password !== password) {
+                return res.status(401).json({ message: 'Invalid email or password.' });
+            }
+            res.json({
+                message: 'Login successful.',
+                admin: admin
+            });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Server error on admin login.' });
+        }
     },
+
 
     blockUser: async (req, res) => {
         try {
@@ -152,13 +175,20 @@ const adminController = {
 
     sendEmailToUser: async (req, res) => {
         try {
-            // ...
-            res.json({ message: 'Email sent (mock).' });
+            const { userEmail: email, userSubject:subject, userMessage: message } = req.body;
+
+            if (!email || !subject || !message) {
+                return res.status(400).json({ message: 'Email, subject, and message are required.' });
+            }
+
+            await sendEmail(email, subject, message);
+
+            res.json({ message: 'Email sent successfully.' });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on send email.' });
         }
-    }
+    },
 };
 
 module.exports = adminController;

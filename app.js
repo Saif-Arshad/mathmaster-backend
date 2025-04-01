@@ -10,6 +10,7 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const practiceRoutes = require('./routes/practiceRoutes');
 const quizRoutes = require('./routes/quizRoutes');
+const initialQuizRoutes = require('./routes/initialQuizRoutes');
 
 const app = express();
 app.use(cors());
@@ -25,6 +26,7 @@ app.use('/user', userRoutes);
 app.use('/admin', adminRoutes);
 app.use('/practice', practiceRoutes);
 app.use('/quiz', quizRoutes);
+app.use('/initial-quiz', initialQuizRoutes);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {

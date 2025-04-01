@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   age INT NOT NULL,
   is_verified TINYINT DEFAULT 0,
-  isFirstTimeUser TINYINT DEFAULT 1,
   is_blocked TINYINT DEFAULT 0,
   created_at DATETIME DEFAULT NOW(),
   updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
@@ -61,6 +60,17 @@ CREATE TABLE IF NOT EXISTS hints (
   hint_text TEXT NOT NULL,
   FOREIGN KEY (question_id) REFERENCES questions (question_id)
 );
+CREATE TABLE IF NOT EXISTS initial_quiz (
+  quiz_id INT AUTO_INCREMENT PRIMARY KEY,
+  question_text TEXT NOT NULL,
+  option_a VARCHAR(255) NOT NULL,
+  option_b VARCHAR(255) NOT NULL,
+  option_c VARCHAR(255) NOT NULL,
+  option_d VARCHAR(255) NOT NULL,
+  correct_option CHAR(1) NOT NULL,
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
+);
 
 CREATE TABLE IF NOT EXISTS performance (
   performance_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -81,7 +91,7 @@ CREATE TABLE IF NOT EXISTS user_progress (
   user_id INT NOT NULL,
   level_id INT NOT NULL,
   sublevel_id INT NOT NULL,
-  status VARCHAR(20) DEFAULT 'in-progress', -- in-progress, completed, etc.
+  status VARCHAR(20) DEFAULT 'in-progress',
   FOREIGN KEY (user_id) REFERENCES users (user_id),
   FOREIGN KEY (level_id) REFERENCES levels (level_id),
   FOREIGN KEY (sublevel_id) REFERENCES sublevels (sublevel_id)
