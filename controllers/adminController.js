@@ -72,12 +72,56 @@ const adminController = {
         }
     },
 
+
+ 
+
+    // getAllLevels: async (req, res) => {
+    //     try {
+    //         const [rows] = await db.query('SELECT * FROM levels');
+    //         res.json(rows);
+    //     } catch (err) {
+    //         console.error(err);
+    //         res.status(500).json({ message: 'Server error on get all levels.' });
+    //     }
+    // },
+    getAllLevels: async (req, res) => {
+        try {
+            // First, get all levels
+            const [levelsRows] = await db.query('SELECT * FROM levels');
+            // Then, get all sublevels
+            const [sublevelsRows] = await db.query('SELECT * FROM sublevels');
+            // Map sublevels to their corresponding level
+            const levels = levelsRows.map(level => ({
+                ...level,
+                sublevels: sublevelsRows.filter(s => s.level_id === level.level_id)
+            }));
+            res.json(levels);
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Server error on get all levels.' });
+        }
+    },
+
     addLevel: async (req, res) => {
         try {
-            const { level_name, min_passing_percentage } = req.body;
+            const { level_name, min_passing_percentage, discription } = req.body;
             const [result] = await db.query(
-                'INSERT INTO levels (level_name, min_passing_percentage) VALUES (?,?)',
-                [level_name, min_passing_percentage]
+                'INSERT INTO levels (level_name, min_passing_percentage, discription) VALUES (?,?,?)',
+                [level_name, min_passing_percentage, discription]
+            );
+            res.json({ message: 'Level added.', level_id: result.insertId });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Server error on add level.' });
+        }
+    },
+
+    addLevel: async (req, res) => {
+        try {
+            const { level_name, min_passing_percentage, discription } = req.body;
+            const [result] = await db.query(
+                'INSERT INTO levels (level_name, min_passing_percentage, discription) VALUES (?,?,?)',
+                [level_name, min_passing_percentage, discription]
             );
             res.json({ message: 'Level added.', level_id: result.insertId });
         } catch (err) {
@@ -95,19 +139,72 @@ const adminController = {
             res.status(500).json({ message: 'Server error on delete level.' });
         }
     },
-
     modifyLevel: async (req, res) => {
         try {
             const { level_id } = req.params;
-            const { level_name, min_passing_percentage } = req.body;
+            const { level_name, min_passing_percentage, discription } = req.body;
             await db.query(
-                'UPDATE levels SET level_name = ?, min_passing_percentage = ? WHERE level_id = ?',
-                [level_name, min_passing_percentage, level_id]
+                'UPDATE levels SET level_name = ?, min_passing_percentage = ?, discription = ? WHERE level_id = ?',
+                [level_name, min_passing_percentage, discription, level_id]
             );
             res.json({ message: 'Level updated.' });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on modify level.' });
+        }
+    },
+
+    getAllSubLevel: async (req, res) => {
+        try {
+            const [rows] = await db.query('SELECT * FROM sublevels');
+            res.json(rows);
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Server error on get all sublevels.' });
+        }
+    },
+    addSubLevel: async (req, res) => {
+        try {
+            const { level_id, sublevel_discription } = req.body;
+            if (!level_id || !sublevel_discription) {
+                return res.status(400).json({ message: 'Level ID and sublevel discription are required.' });
+            }
+            const [result] = await db.query(
+                'INSERT INTO sublevels (level_id, sublevel_discription) VALUES (?,?)',
+                [level_id, sublevel_discription]
+            );
+            res.json({ message: 'Sublevel added.', sublevel_id: result.insertId });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Server error on add sublevels.' });
+        }
+    },
+
+    deleteSubLevel: async (req, res) => {
+        try {
+            const { sublevel_id } = req.params;
+            await db.query('DELETE FROM sublevels WHERE sublevel_id = ?', [sublevel_id]);
+            res.json({ message: 'Sublevel deleted.' });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Server error on delete sublevels.' });
+        }
+    },
+    modifySubLevel: async (req, res) => {
+        try {
+            const { sublevel_id } = req.params;
+            const { level_id, sublevel_discription } = req.body;
+            if (!level_id || !sublevel_discription) {
+                return res.status(400).json({ message: 'Level ID and sublevel discription are required.' });
+            }
+            await db.query(
+                'UPDATE sublevels SET level_id = ?, sublevel_discription = ? WHERE sublevel_id = ?',
+                [level_id, sublevel_discription, sublevel_id]
+            );
+            res.json({ message: 'Sublevel updated.' });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Server error on modify sublevels.' });
         }
     },
 
@@ -175,7 +272,7 @@ const adminController = {
 
     sendEmailToUser: async (req, res) => {
         try {
-            const { userEmail: email, userSubject:subject, userMessage: message } = req.body;
+            const { userEmail: email, userSubject: subject, userMessage: message } = req.body;
 
             if (!email || !subject || !message) {
                 return res.status(400).json({ message: 'Email, subject, and message are required.' });

@@ -9,9 +9,13 @@ router.patch('/block-user/:user_id', adminController.blockUser);
 router.patch('/unblock-user/:user_id', adminController.unblockUser);
 
 router.patch('/levels/passing-percentage/:level_id', verifyAdmin, adminController.setMinQuizPercentage);
-router.post('/levels', verifyAdmin, adminController.addLevel);
-router.delete('/levels/:level_id', verifyAdmin, adminController.deleteLevel);
-router.put('/levels/:level_id', verifyAdmin, adminController.modifyLevel);
+router.post('/levels', adminController.addLevel);
+router.get('/levels', adminController.getAllLevels);
+router.put('/levels/:level_id', adminController.modifyLevel);
+router.delete('/levels/:level_id', adminController.deleteLevel);
+router.post('/sub-levels', adminController.addSubLevel);
+router.put('/sub-levels/:sublevel_id', adminController.modifySubLevel);
+router.delete('/sub-levels/:sublevel_id', adminController.deleteSubLevel);
 
 router.post('/questions', verifyAdmin, adminController.addQuestion);
 router.delete('/questions/:question_id', verifyAdmin, adminController.deleteQuestion);

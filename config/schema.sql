@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS levels (
 CREATE TABLE IF NOT EXISTS sublevels (
   sublevel_id INT AUTO_INCREMENT PRIMARY KEY,
   level_id INT NOT NULL,
-  sublevel_number INT NOT NULL,
+  sublevel_discription VARCHAR(255) NOT NULL;
+  ALTER TABLE sublevels
   FOREIGN KEY (level_id) REFERENCES levels (level_id)
 );
 
