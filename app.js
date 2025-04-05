@@ -1,4 +1,4 @@
-// app.js
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -12,13 +12,15 @@ const practiceRoutes = require('./routes/practiceRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const initialQuizRoutes = require('./routes/initialQuizRoutes');
 
+require('./config/db');
+
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(cookieParser());
 
 app.get('/', (req, res) => {
-    res.send('Welcome to Math Master Backend!');
+    res.send('Welcome to Math Master Backend powered by Prisma!');
 });
 
 app.use('/auth', authRoutes);

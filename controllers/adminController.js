@@ -1,44 +1,40 @@
-const db = require('../config/db');
-const User = require('../models/User');
+
+const db3 = require('../config/db');
+const UserModel = require('../models/User');
 const sendEmail = require('../utils/sendEmail');
 
 const adminController = {
     getAllUsers: async (req, res) => {
         try {
-            const [rows] = await db.query('SELECT * FROM users');
-            res.json(rows);
+            const users = await db3.users.findMany();
+            res.json(users);
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on get all users.' });
         }
-    }, loginAdmin: async (req, res) => {
+    },
+
+    loginAdmin: async (req, res) => {
         try {
             const { email, password } = req.body;
-
-            const [rows] = await db.query('SELECT * FROM admins WHERE email = ?', [email]);
-
-            if (rows.length === 0) {
-                return res.status(404).json({ message: 'Admin not found.' });
-            }
-            const admin = rows[0];
-            if (admin.password !== password) {
+            console.log("🚀 ~ loginAdmin: ~ password:", password)
+            console.log("🚀 ~ loginAdmin: ~ email:", email)
+            const admin = await db3.admins.findUnique({ where: { email } });
+            if (!admin) return res.status(404).json({ message: 'Admin not found.' });
+            console.log("🚀 ~ loginAdmin: ~ admin:", admin)
+            if (admin.password !== password)
                 return res.status(401).json({ message: 'Invalid email or password.' });
-            }
-            res.json({
-                message: 'Login successful.',
-                admin: admin
-            });
+            res.json({ message: 'Login successful.', admin });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on admin login.' });
         }
     },
 
-
     blockUser: async (req, res) => {
         try {
             const { user_id } = req.params;
-            await User.blockUser(user_id);
+            await UserModel.blockUser(user_id);
             res.json({ message: 'User blocked successfully.' });
         } catch (err) {
             console.error(err);
@@ -49,7 +45,7 @@ const adminController = {
     unblockUser: async (req, res) => {
         try {
             const { user_id } = req.params;
-            await User.unblockUser(user_id);
+            await UserModel.unblockUser(user_id);
             res.json({ message: 'User unblocked successfully.' });
         } catch (err) {
             console.error(err);
@@ -61,10 +57,10 @@ const adminController = {
         try {
             const { level_id } = req.params;
             const { percentage } = req.body;
-            await db.query(
-                'UPDATE levels SET min_passing_percentage = ? WHERE level_id = ?',
-                [percentage, level_id]
-            );
+            await db3.levels.update({
+                where: { level_id: Number(level_id) },
+                data: { min_passing_percentage: Number(percentage) }
+            });
             res.json({ message: 'Minimum passing percentage updated.' });
         } catch (err) {
             console.error(err);
@@ -72,29 +68,9 @@ const adminController = {
         }
     },
 
-
- 
-
-    // getAllLevels: async (req, res) => {
-    //     try {
-    //         const [rows] = await db.query('SELECT * FROM levels');
-    //         res.json(rows);
-    //     } catch (err) {
-    //         console.error(err);
-    //         res.status(500).json({ message: 'Server error on get all levels.' });
-    //     }
-    // },
     getAllLevels: async (req, res) => {
         try {
-            // First, get all levels
-            const [levelsRows] = await db.query('SELECT * FROM levels');
-            // Then, get all sublevels
-            const [sublevelsRows] = await db.query('SELECT * FROM sublevels');
-            // Map sublevels to their corresponding level
-            const levels = levelsRows.map(level => ({
-                ...level,
-                sublevels: sublevelsRows.filter(s => s.level_id === level.level_id)
-            }));
+            const levels = await db3.levels.findMany({ include: { sublevels: true } });
             res.json(levels);
         } catch (err) {
             console.error(err);
@@ -105,48 +81,35 @@ const adminController = {
     addLevel: async (req, res) => {
         try {
             const { level_name, min_passing_percentage, discription } = req.body;
-            const [result] = await db.query(
-                'INSERT INTO levels (level_name, min_passing_percentage, discription) VALUES (?,?,?)',
-                [level_name, min_passing_percentage, discription]
-            );
-            res.json({ message: 'Level added.', level_id: result.insertId });
+            const level = await db3.levels.create({
+                data: { level_name, min_passing_percentage, discription }
+            });
+            res.json({ message: 'Level added.', level_id: level.level_id });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on add level.' });
         }
     },
 
-    addLevel: async (req, res) => {
-        try {
-            const { level_name, min_passing_percentage, discription } = req.body;
-            const [result] = await db.query(
-                'INSERT INTO levels (level_name, min_passing_percentage, discription) VALUES (?,?,?)',
-                [level_name, min_passing_percentage, discription]
-            );
-            res.json({ message: 'Level added.', level_id: result.insertId });
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: 'Server error on add level.' });
-        }
-    },
     deleteLevel: async (req, res) => {
         try {
             const { level_id } = req.params;
-            await db.query('DELETE FROM levels WHERE level_id = ?', [level_id]);
+            await db3.levels.delete({ where: { level_id: Number(level_id) } });
             res.json({ message: 'Level deleted.' });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on delete level.' });
         }
     },
+
     modifyLevel: async (req, res) => {
         try {
             const { level_id } = req.params;
             const { level_name, min_passing_percentage, discription } = req.body;
-            await db.query(
-                'UPDATE levels SET level_name = ?, min_passing_percentage = ?, discription = ? WHERE level_id = ?',
-                [level_name, min_passing_percentage, discription, level_id]
-            );
+            await db3.levels.update({
+                where: { level_id: Number(level_id) },
+                data: { level_name, min_passing_percentage, discription }
+            });
             res.json({ message: 'Level updated.' });
         } catch (err) {
             console.error(err);
@@ -156,24 +119,23 @@ const adminController = {
 
     getAllSubLevel: async (req, res) => {
         try {
-            const [rows] = await db.query('SELECT * FROM sublevels');
-            res.json(rows);
+            const subs = await db3.sublevels.findMany();
+            res.json(subs);
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on get all sublevels.' });
         }
     },
+
     addSubLevel: async (req, res) => {
         try {
             const { level_id, sublevel_discription } = req.body;
-            if (!level_id || !sublevel_discription) {
+            if (!level_id || !sublevel_discription)
                 return res.status(400).json({ message: 'Level ID and sublevel discription are required.' });
-            }
-            const [result] = await db.query(
-                'INSERT INTO sublevels (level_id, sublevel_discription) VALUES (?,?)',
-                [level_id, sublevel_discription]
-            );
-            res.json({ message: 'Sublevel added.', sublevel_id: result.insertId });
+            const sub = await db3.sublevels.create({
+                data: { level_id, sublevel_discription }
+            });
+            res.json({ message: 'Sublevel added.', sublevel_id: sub.sublevel_id });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on add sublevels.' });
@@ -183,24 +145,24 @@ const adminController = {
     deleteSubLevel: async (req, res) => {
         try {
             const { sublevel_id } = req.params;
-            await db.query('DELETE FROM sublevels WHERE sublevel_id = ?', [sublevel_id]);
+            await db3.sublevels.delete({ where: { sublevel_id: Number(sublevel_id) } });
             res.json({ message: 'Sublevel deleted.' });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on delete sublevels.' });
         }
     },
+
     modifySubLevel: async (req, res) => {
         try {
             const { sublevel_id } = req.params;
             const { level_id, sublevel_discription } = req.body;
-            if (!level_id || !sublevel_discription) {
+            if (!level_id || !sublevel_discription)
                 return res.status(400).json({ message: 'Level ID and sublevel discription are required.' });
-            }
-            await db.query(
-                'UPDATE sublevels SET level_id = ?, sublevel_discription = ? WHERE sublevel_id = ?',
-                [level_id, sublevel_discription, sublevel_id]
-            );
+            await db3.sublevels.update({
+                where: { sublevel_id: Number(sublevel_id) },
+                data: { level_id, sublevel_discription }
+            });
             res.json({ message: 'Sublevel updated.' });
         } catch (err) {
             console.error(err);
@@ -211,11 +173,10 @@ const adminController = {
     addQuestion: async (req, res) => {
         try {
             const { level_id, sublevel_id, difficulty, question_text, correct_answer } = req.body;
-            const [result] = await db.query(
-                'INSERT INTO questions (level_id, sublevel_id, difficulty, question_text, correct_answer) VALUES (?,?,?,?,?)',
-                [level_id, sublevel_id, difficulty, question_text, correct_answer]
-            );
-            res.json({ message: 'Question added.', question_id: result.insertId });
+            const q = await db3.questions.create({
+                data: { level_id, sublevel_id, difficulty, question_text, correct_answer }
+            });
+            res.json({ message: 'Question added.', question_id: q.question_id });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on add question.' });
@@ -225,7 +186,7 @@ const adminController = {
     deleteQuestion: async (req, res) => {
         try {
             const { question_id } = req.params;
-            await db.query('DELETE FROM questions WHERE question_id = ?', [question_id]);
+            await db3.questions.delete({ where: { question_id: Number(question_id) } });
             res.json({ message: 'Question deleted.' });
         } catch (err) {
             console.error(err);
@@ -237,10 +198,10 @@ const adminController = {
         try {
             const { question_id } = req.params;
             const { difficulty, question_text, correct_answer } = req.body;
-            await db.query(
-                'UPDATE questions SET difficulty = ?, question_text = ?, correct_answer = ? WHERE question_id = ?',
-                [difficulty, question_text, correct_answer, question_id]
-            );
+            await db3.questions.update({
+                where: { question_id: Number(question_id) },
+                data: { difficulty, question_text, correct_answer }
+            });
             res.json({ message: 'Question updated.' });
         } catch (err) {
             console.error(err);
@@ -251,19 +212,18 @@ const adminController = {
     regradeQuiz: async (req, res) => {
         try {
             const { performance_id } = req.params;
-            // Regrade logic here
-            // ...
+            // Regrading logic here...
             res.json({ message: 'Quiz regraded (mock).' });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on regrade quiz.' });
         }
     },
+
     generateReport: async (req, res) => {
         try {
-            const [rows] = await db.query('SELECT * FROM performance');
-            // You can shape this data for your reporting needs
-            res.json(rows);
+            const report = await db3.performance.findMany();
+            res.json(report);
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on generate report.' });
@@ -273,19 +233,15 @@ const adminController = {
     sendEmailToUser: async (req, res) => {
         try {
             const { userEmail: email, userSubject: subject, userMessage: message } = req.body;
-
-            if (!email || !subject || !message) {
+            if (!email || !subject || !message)
                 return res.status(400).json({ message: 'Email, subject, and message are required.' });
-            }
-
             await sendEmail(email, subject, message);
-
             res.json({ message: 'Email sent successfully.' });
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on send email.' });
         }
-    },
+    }
 };
 
 module.exports = adminController;

@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  user_id           Int           @id @default(autoincrement())
+  email             String        @unique
+  username          String        @unique
+  password          String
+  age               Int
+  is_blocked        Boolean       @default(false)
+  is_verified       Boolean       @default(false)
+  initialPercentage Int?
+  otps              otps[]
+  performance       performance[]
+}
+
+model admins {
+  admin_id Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+}
+
+model levels {
+  level_id               Int           @id @default(autoincrement())
+  level_name             String
+  min_passing_percentage Int
+  discription            String?
+  sublevels              sublevels[]
+  performance            performance[]
+
+  questions questions[]
+}
+
+model sublevels {
+  sublevel_id          Int         @id @default(autoincrement())
+  level_id             Int
+  sublevel_discription String
+  level                levels      @relation(fields: [level_id], references: [level_id])
+  questions            questions[]
+}
+
+model questions {
+  question_id    Int           @id @default(autoincrement())
+  level_id       Int
+  sublevel_id    Int
+  difficulty     String
+  question_text  String
+  correct_answer String
+  level          levels        @relation(fields: [level_id], references: [level_id])
+  sublevel       sublevels     @relation(fields: [sublevel_id], references: [sublevel_id])
+  performance    performance[]
+  hints          hints[]
+}
+
+model hints {
+  hint_id     Int       @id @default(autoincrement())
+  question_id Int
+  hint_text   String
+  question    questions @relation(fields: [question_id], references: [question_id])
+}
+
+model performance {
+  performance_id  Int    @id @default(autoincrement())
+  user_id         Int
+  level_id        Int
+  correct_answers Int
+  total_questions Int
+  quiz_score      Float
+  user            users  @relation(fields: [user_id], references: [user_id])
+  level           levels @relation(fields: [level_id], references: [level_id])
+
+  questions questions[]
+}
+
+model otps {
+  otp_id     Int      @id @default(autoincrement())
+  user_id    Int
+  code       String
+  expires_at DateTime
+  used       Boolean  @default(false)
+  user       users    @relation(fields: [user_id], references: [user_id])
+}
+
+model initial_quiz {
+  quiz_id        Int    @id @default(autoincrement())
+  question_text  String
+  option_a       String
+  option_b       String
+  option_c       String
+  option_d       String
+  correct_option String
+}
