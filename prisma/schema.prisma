@@ -16,6 +16,8 @@ model users {
   is_blocked        Boolean       @default(false)
   is_verified       Boolean       @default(false)
   initialPercentage Int?
+  currentLevel      Int?
+  currentSublevel   Int?
   otps              otps[]
   performance       performance[]
 }
@@ -38,24 +40,22 @@ model levels {
 }
 
 model sublevels {
-  sublevel_id          Int         @id @default(autoincrement())
+  sublevel_id          Int      @id @default(autoincrement())
   level_id             Int
   sublevel_discription String
-  level                levels      @relation(fields: [level_id], references: [level_id])
-  questions            questions[]
+  level                levels   @relation(fields: [level_id], references: [level_id])
+  createdAt            DateTime @default(now())
 }
 
 model questions {
-  question_id             Int           @id @default(autoincrement())
+  question_id             Int     @id @default(autoincrement())
   level_id                Int
-  sublevel_id             Int?
   question_text           String
   game                    String
   colorUp_shape           String?
   colorUp_totalItem       Int?
   colorUp_coloredCount    Int?
   sort_order              String?
-  isQuiz                  Boolean       @default(false)
   sort_shape              String?
   sort_totalItem          Int?
   box_shape               String?
@@ -66,30 +66,20 @@ model questions {
   equation_finalBoxcount  Int?
   equation_firstBoxCount  Int?
   equation_secondBoxCount Int?
-  level                   levels        @relation(fields: [level_id], references: [level_id])
-  sublevel                sublevels?    @relation(fields: [sublevel_id], references: [sublevel_id])
-  performance             performance[]
-  hints                   hints[]
+  level                   levels  @relation(fields: [level_id], references: [level_id])
 }
 
-model hints {
-  hint_id     Int       @id @default(autoincrement())
-  question_id Int
-  hint_text   String
-  question    questions @relation(fields: [question_id], references: [question_id])
-}
 
 model performance {
   performance_id  Int    @id @default(autoincrement())
   user_id         Int
   level_id        Int
+  sublevel_id     Int
   correct_answers Int
   total_questions Int
   quiz_score      Float
   user            users  @relation(fields: [user_id], references: [user_id])
   level           levels @relation(fields: [level_id], references: [level_id])
-
-  questions questions[]
 }
 
 model otps {
@@ -102,10 +92,9 @@ model otps {
 }
 
 model initial_quiz {
-  quiz_id       Int    @id @default(autoincrement())
-  question_text String
-  game          String
-
+  quiz_id                 Int     @id @default(autoincrement())
+  question_text           String
+  game                    String
   colorUp_shape           String?
   colorUp_totalItem       Int?
   colorUp_coloredCount    Int?

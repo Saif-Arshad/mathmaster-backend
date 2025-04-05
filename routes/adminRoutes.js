@@ -16,6 +16,7 @@ router.put('/sub-levels/:sublevel_id', adminController.modifySubLevel);
 router.delete('/sub-levels/:sublevel_id', adminController.deleteSubLevel);
 router.get('/questions/levels', questionController.getLevelsWithSublevels);
 router.get('/questions', questionController.GetAllQuestions);
+router.get('/questions/:id', questionController.getUserQuestions);
 router.post('/questions', questionController.addQuestion);
 router.put('/questions/:question_id', questionController.modifyQuestion);
 router.delete('/questions/:question_id', questionController.deleteQuestion);

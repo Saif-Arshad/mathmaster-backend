@@ -8,13 +8,49 @@ const userController = {
             const user_id = req.user.user_id;
             const user = await UserModel2.findById(user_id);
             if (!user) return res.status(404).json({ message: 'User not found.' });
+
             delete user.password;
+            if (user.currentLevel) {
+
+                const performance = await db7.performance.findMany({
+                    where: {
+                        user_id,
+                        level: {
+                            level_name: user.currentLevel
+                        }
+                    },
+                    select: {
+                        sublevel: true
+                    }
+                });
+
+                const completedSubLevels = performance.map((p) => p.sublevel);
+                const allSubLevels = await db7.sublevels.findMany({
+                    where: {
+                        level: {
+                            level_name: user.currentLevel
+                        }
+                    },
+                    orderBy: { sublevel_id: 'asc' }
+                });
+
+                const progressPercent = allSubLevels.length > 0
+                    ? Math.floor((completedSubLevels.length / allSubLevels.length) * 100)
+                    : 0;
+
+                user.progress = progressPercent;
+            }
+            else {
+                user.progress = 0;
+            }
+
             res.json(user);
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on get profile.' });
         }
     },
+
 
     logout: async (req, res) => {
         try {

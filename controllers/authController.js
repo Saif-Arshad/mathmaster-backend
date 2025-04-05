@@ -52,7 +52,10 @@ const authController = {
             await db4.otps.update({ where: { otp_id: otpRow.otp_id }, data: { used: true } });
             await db4.users.update({ where: { user_id: Number(user_id) }, data: { is_verified: true } });
             const user = await User.findById(user_id);
-            res.json({ message: 'OTP verified successfully.', user });
+            const token = jwt.sign({ user_id: user.user_id }, process.env.JWT_SECRET || 'secretKey', {
+                expiresIn: '1d'
+            });
+            res.json({ message: 'OTP verified successfully.', user, token});
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: 'Server error on OTP verification.' });

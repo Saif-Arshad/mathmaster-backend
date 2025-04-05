@@ -1,18 +1,14 @@
 const { PrismaClient } = require('@prisma/client');
+const { generateLearning } = require('../utils/AI');
 
 const db3 = new PrismaClient();
 
 
-const ensureQuizOrSublevel = (isQuiz, sublevel_id) => {
-    if (isQuiz || sublevel_id) return true;
-    throw new Error('Either "isQuiz" must be true or a "sublevel_id" must be provided.');
-};
 
 
 exports.getLevelsWithSublevels = async (_, res) => {
     try {
         const levels = await db3.levels.findMany({
-            include: { sublevels: true },
             orderBy: { level_id: 'asc' },
         });
         res.json(levels);
@@ -22,13 +18,119 @@ exports.getLevelsWithSublevels = async (_, res) => {
     }
 };
 
+exports.getUserQuestions = async (req, res) => {
+    const { id } = req.params;
+    console.log("🚀 ~ exports.getUserQuestions= ~ id:", id)
+
+    try {
+        const user = await db3.users.findUnique({
+            where: { user_id: Number(id) },
+        })
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        let currentUserLevel = user.currentLevel
+
+        if (!currentUserLevel) {
+            const levels = await db3.levels.findMany({
+                orderBy: { level_id: 'asc' },
+            })
+            currentUserLevel = levels[0].level_name
+        }
+        const questions = await db3.questions.findMany({
+            where: {
+                level: {
+                    level_name: currentUserLevel
+                }
+            },
+            include: {
+                level: true
+            }
+        });
+        console.log("🚀 ~ exports.getUserQuestions= ~ questions:", questions)
+        if (!questions) {
+            return res.status(404).json({ message: 'No questions found for this user.' });
+        }
+        await generateLearning(questions, user.progress)
+            .then((sortedQuestions) => {
+                console.log("🚀 ~ .then ~ sortedQuestions:", sortedQuestions)
+                const sortedQuestionsWithLevel = sortedQuestions.map((question) => {
+                    const questionWithLevel = questions.find(q => q.question_id === question.questionId);
+                    return {
+                        ...questionWithLevel
+                    };
+                })
+                console.log("🚀 ~ sortedQuestionsWithLevel ~ sortedQuestionsWithLevel:", sortedQuestionsWithLevel)
+                res.json({ questions: sortedQuestionsWithLevel, user });
+            })
+            .catch((err) => {
+                console.error(err);
+                res.json({ questions: questions, user });
+
+            });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error.' });
+    }
+
+}
+
+exports.submitSubLevel = async (req, res) => {
+    const { user_id, level_id, correct_answers, total_questions, quiz_score } = req.body;
+    try {
+        const subLevels = await db3.sublevels.findMany({
+            where: {
+                level_id: Number(level_id)
+            },
+            orderBy: { sublevel_id: 'asc' }
+        });
+
+        const performanceRecords = await db3.performance.findMany({
+            where: {
+                user_id: Number(user_id),
+                level_id: Number(level_id)
+            }
+        });
+
+        let targetSubLevel;
+        if (performanceRecords.length > 0) {
+            const completedSubLevelIds = performanceRecords.map(record => record.sublevel_id);
+            targetSubLevel = subLevels.find(sub => !completedSubLevelIds.includes(sub.sublevel_id));
+            if (!targetSubLevel) {
+                return res.status(200).json({ message: "All sublevels completed for this level." });
+            }
+        } else {
+            targetSubLevel = subLevels[0];
+        }
+
+        const newPerformance = await db3.performance.create({
+            data: {
+                user_id: Number(user_id),
+                level_id: Number(level_id),
+                sublevel_id: targetSubLevel.sublevel_id,
+                correct_answers: 0,  
+                total_questions: 0,  
+                quiz_score: 0          
+            }
+        });
+
+            
+
+        return res.status(200).json({
+            message: "Performance record created for sublevel.",
+            performance: newPerformance
+        });
+    } catch (error) {
+        res.status(400).json({ message: error.message || "Server error" });
+    }
+};
+
 
 exports.addQuestion = async (req, res) => {
     try {
         const {
             level_id,
-            sublevel_id,
-            isQuiz,
             question_text,
             game,
 
@@ -51,13 +153,10 @@ exports.addQuestion = async (req, res) => {
             equation_secondBoxCount,
         } = req.body;
 
-        ensureQuizOrSublevel(isQuiz, sublevel_id);
 
         const q = await db3.questions.create({
             data: {
                 level_id: Number(level_id),
-                sublevel_id: isQuiz ? null : sublevel_id ? Number(sublevel_id) : null,
-                isQuiz: Boolean(isQuiz),
                 question_text,
                 game,
 
@@ -91,15 +190,11 @@ exports.addQuestion = async (req, res) => {
 exports.modifyQuestion = async (req, res) => {
     try {
         const { question_id } = req.params;
-        const { isQuiz, sublevel_id } = req.body;
 
-        ensureQuizOrSublevel(isQuiz, sublevel_id);
 
         const data = {
             ...req.body,
             level_id: req.body.level_id ? Number(req.body.level_id) : undefined,
-            sublevel_id: isQuiz ? null : req.body.sublevel_id ? Number(req.body.sublevel_id) : null,
-            isQuiz: Boolean(isQuiz),
 
             colorUp_totalItem: req.body.colorUp_totalItem ? Number(req.body.colorUp_totalItem) : undefined,
             colorUp_coloredCount: req.body.colorUp_coloredCount ? Number(req.body.colorUp_coloredCount) : undefined,
@@ -132,16 +227,14 @@ exports.deleteQuestion = async (req, res) => {
 
 exports.GetAllQuestions = async (req, res) => {
     try {
-        const { level_id, sublevel_id, game, isQuiz } = req.query;
+        const { level_id, game } = req.query;
 
         const questions = await db3.questions.findMany({
             where: {
                 level_id: level_id ? Number(level_id) : undefined,
-                sublevel_id: sublevel_id ? Number(sublevel_id) : undefined,
                 game: game ? game : undefined,
-                isQuiz: isQuiz !== undefined ? Boolean(isQuiz === 'true') : undefined,
             },
-            include: { level: true, sublevel: true },
+            include: { level: true },
             orderBy: { question_id: 'asc' },
         });
 

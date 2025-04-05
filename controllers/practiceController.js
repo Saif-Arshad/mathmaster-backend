@@ -13,17 +13,6 @@ const practiceController = {
         }
     },
 
-    getHint: async (req, res) => {
-        try {
-            const { question_id } = req.params;
-            const hintArr = await db5.hints.findMany({ where: { question_id: Number(question_id) }, take: 1 });
-            if (!hintArr.length) return res.status(404).json({ message: 'No hint found for this question.' });
-            res.json(hintArr[0]);
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: 'Server error on get hint.' });
-        }
-    },
 
     submitAnswer: async (req, res) => {
         try {
