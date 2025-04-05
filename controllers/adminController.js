@@ -53,20 +53,7 @@ const adminController = {
         }
     },
 
-    setMinQuizPercentage: async (req, res) => {
-        try {
-            const { level_id } = req.params;
-            const { percentage } = req.body;
-            await db3.levels.update({
-                where: { level_id: Number(level_id) },
-                data: { min_passing_percentage: Number(percentage) }
-            });
-            res.json({ message: 'Minimum passing percentage updated.' });
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: 'Server error on set min quiz percentage.' });
-        }
-    },
+
 
     getAllLevels: async (req, res) => {
         try {
@@ -170,65 +157,6 @@ const adminController = {
         }
     },
 
-    addQuestion: async (req, res) => {
-        try {
-            const { level_id, sublevel_id, difficulty, question_text, correct_answer } = req.body;
-            const q = await db3.questions.create({
-                data: { level_id, sublevel_id, difficulty, question_text, correct_answer }
-            });
-            res.json({ message: 'Question added.', question_id: q.question_id });
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: 'Server error on add question.' });
-        }
-    },
-
-    deleteQuestion: async (req, res) => {
-        try {
-            const { question_id } = req.params;
-            await db3.questions.delete({ where: { question_id: Number(question_id) } });
-            res.json({ message: 'Question deleted.' });
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: 'Server error on delete question.' });
-        }
-    },
-
-    modifyQuestion: async (req, res) => {
-        try {
-            const { question_id } = req.params;
-            const { difficulty, question_text, correct_answer } = req.body;
-            await db3.questions.update({
-                where: { question_id: Number(question_id) },
-                data: { difficulty, question_text, correct_answer }
-            });
-            res.json({ message: 'Question updated.' });
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: 'Server error on modify question.' });
-        }
-    },
-
-    regradeQuiz: async (req, res) => {
-        try {
-            const { performance_id } = req.params;
-            // Regrading logic here...
-            res.json({ message: 'Quiz regraded (mock).' });
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: 'Server error on regrade quiz.' });
-        }
-    },
-
-    generateReport: async (req, res) => {
-        try {
-            const report = await db3.performance.findMany();
-            res.json(report);
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: 'Server error on generate report.' });
-        }
-    },
 
     sendEmailToUser: async (req, res) => {
         try {

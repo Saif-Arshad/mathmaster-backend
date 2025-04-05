@@ -46,16 +46,30 @@ model sublevels {
 }
 
 model questions {
-  question_id    Int           @id @default(autoincrement())
-  level_id       Int
-  sublevel_id    Int
-  difficulty     String
-  question_text  String
-  correct_answer String
-  level          levels        @relation(fields: [level_id], references: [level_id])
-  sublevel       sublevels     @relation(fields: [sublevel_id], references: [sublevel_id])
-  performance    performance[]
-  hints          hints[]
+  question_id             Int           @id @default(autoincrement())
+  level_id                Int
+  sublevel_id             Int?
+  question_text           String
+  game                    String
+  colorUp_shape           String?
+  colorUp_totalItem       Int?
+  colorUp_coloredCount    Int?
+  sort_order              String?
+  isQuiz                  Boolean       @default(false)
+  sort_shape              String?
+  sort_totalItem          Int?
+  box_shape               String?
+  box_firstBoxCount       Int?
+  box_secondBoxCount      Int?
+  equation_shape          String?
+  equation_operation      String?
+  equation_finalBoxcount  Int?
+  equation_firstBoxCount  Int?
+  equation_secondBoxCount Int?
+  level                   levels        @relation(fields: [level_id], references: [level_id])
+  sublevel                sublevels?    @relation(fields: [sublevel_id], references: [sublevel_id])
+  performance             performance[]
+  hints                   hints[]
 }
 
 model hints {
