@@ -82,7 +82,7 @@ const adminController = {
         try {
             const { level_name, min_passing_percentage, discription } = req.body;
             const level = await db3.levels.create({
-                data: { level_name, min_passing_percentage, discription }
+                data: { level_name, min_passing_percentage: Number(min_passing_percentage), discription }
             });
             res.json({ message: 'Level added.', level_id: level.level_id });
         } catch (err) {
@@ -108,7 +108,7 @@ const adminController = {
             const { level_name, min_passing_percentage, discription } = req.body;
             await db3.levels.update({
                 where: { level_id: Number(level_id) },
-                data: { level_name, min_passing_percentage, discription }
+                data: { level_name, min_passing_percentage: Number(min_passing_percentage), discription }
             });
             res.json({ message: 'Level updated.' });
         } catch (err) {
@@ -133,7 +133,7 @@ const adminController = {
             if (!level_id || !sublevel_discription)
                 return res.status(400).json({ message: 'Level ID and sublevel discription are required.' });
             const sub = await db3.sublevels.create({
-                data: { level_id, sublevel_discription }
+                data: { level_id: Number(level_id), sublevel_discription }
             });
             res.json({ message: 'Sublevel added.', sublevel_id: sub.sublevel_id });
         } catch (err) {
@@ -161,7 +161,7 @@ const adminController = {
                 return res.status(400).json({ message: 'Level ID and sublevel discription are required.' });
             await db3.sublevels.update({
                 where: { sublevel_id: Number(sublevel_id) },
-                data: { level_id, sublevel_discription }
+                data: { level_id: Number(level_id), sublevel_discription }
             });
             res.json({ message: 'Sublevel updated.' });
         } catch (err) {

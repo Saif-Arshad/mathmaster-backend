@@ -88,11 +88,22 @@ model otps {
 }
 
 model initial_quiz {
-  quiz_id        Int    @id @default(autoincrement())
-  question_text  String
-  option_a       String
-  option_b       String
-  option_c       String
-  option_d       String
-  correct_option String
+  quiz_id       Int    @id @default(autoincrement())
+  question_text String
+  game          String
+
+  colorUp_shape           String?
+  colorUp_totalItem       Int?
+  colorUp_coloredCount    Int?
+  sort_order              String?
+  sort_shape              String?
+  sort_totalItem          Int?
+  box_shape               String?
+  box_firstBoxCount       Int?
+  box_secondBoxCount      Int?
+  equation_shape          String?
+  equation_operation      String?
+  equation_finalBoxcount  Int?
+  equation_firstBoxCount  Int?
+  equation_secondBoxCount Int?
 }
