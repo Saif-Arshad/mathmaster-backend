@@ -67,34 +67,50 @@ const adminController = {
     getAllLevels2: async (req, res) => {
         try {
             const user = await db3.users.findUnique({
-                where: {
-                    user_id: Number(req.user.user_id)
-                }
+                where: { user_id: Number(req.user.user_id) }
             });
 
-            const currentLevel = user?.currentLevel;
-            console.log("🚀 ~ getAllLevels2: ~ currentLevel:", currentLevel)
+            const currentLevel = user?.currentLevel; 
             const currentSub = user?.currentSublevel;
-            console.log("🚀 ~ getAllLevels2: ~ currentSub:", currentSub)
+            console.log("🚀 ~ getAllLevels2: ~ currentLevel:", currentLevel);
 
             let levels = await db3.levels.findMany({ include: { sublevels: true } });
+            levels.sort((a, b) => a.level_id - b.level_id);
 
-            console.log("🚀 ~ getAllLevels2: ~ levels:", levels)
-            if (currentLevel && currentSub) {
-                levels = levels.map(level => {
-                    if (level.level_name === currentLevel) {
+            if (currentLevel ) {
+                const normalizedCurrentLevel = currentLevel.trim().toLowerCase();
+                const currentLevelIndex = levels.findIndex((level) =>
+                    level.level_name.trim().toLowerCase() === normalizedCurrentLevel
+                );
+                console.log("🚀 ~ getAllLevels2: ~ currentLevelIndex:", currentLevelIndex)
+
+                levels = levels.map((level, idx) => {
+                    if (idx < currentLevelIndex) {
                         return {
                             ...level,
-                            sublevels: level.sublevels.map(sub => ({
+                            sublevels: level.sublevels.map((sub) => ({
                                 ...sub,
-                                isCompleted: sub.sublevel_id <= currentSub
+                                isCompleted: true
                             }))
                         };
+                    } else if (idx === currentLevelIndex) {
+                        const currentSubIndex = level.sublevels.findIndex(
+                            (sub) => sub.sublevel_id === currentSub
+                        );
+                        return {
+                            ...level,
+                            sublevels: level.sublevels.map((sub, sIdx) => ({
+                                ...sub,
+                                isCompleted: sIdx <= currentSubIndex
+                            }))
+                        };
+                    } else {
+                        return level;
                     }
-                    return level;
                 });
             }
-            console.log(levels.filter((item) => item.level_id == 2)[0].sublevels)
+
+            console.log(levels.filter((item) => item.level_id == 2)[0]?.sublevels);
             res.json(levels);
         } catch (err) {
             console.error(err);

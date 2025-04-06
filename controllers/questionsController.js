@@ -29,6 +29,9 @@ exports.getUserQuestions = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
+        if(user.is_blocked){
+            return res.status(403).json({ message: 'You are blocked.' });
+        }
 
         let userSubLevel = user.currentSublevel;
         let currentUserLevel = user.currentLevel;
@@ -146,7 +149,9 @@ exports.getQuizQuestions = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
-
+        if (user.is_blocked) {
+            return res.status(403).json({ message: 'You are blocked.' });
+        }
 
         if (!user.currentLevel) {
             return res.status(400).json({ message: 'Please complete practice questions' });
