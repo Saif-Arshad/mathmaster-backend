@@ -52,6 +52,7 @@ model questions {
   level_id                Int
   question_text           String
   game                    String
+  isQuiz                  Boolean @default(false)
   colorUp_shape           String?
   colorUp_totalItem       Int?
   colorUp_coloredCount    Int?

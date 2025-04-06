@@ -1,10 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const quizController = require('../controllers/quizController');
-const verifyToken = require('../middleware/verifyToken');
+const { getQuizQuestions, submitQuiz } = require('../controllers/questionsController');
 
-router.get('/start', verifyToken, quizController.startQuiz);
-router.post('/submit', verifyToken, quizController.submitQuiz);
-router.get('/result/:performance_id', verifyToken, quizController.getQuizResult);
+router.get('/:id', getQuizQuestions);
+router.post('/submit', submitQuiz);
 
 module.exports = router;

@@ -90,8 +90,9 @@ exports.getUserQuestions = async (req, res) => {
                 level: true
             }
         });
-        if (!questions) {
-            return res.status(404).json({ message: 'No questions found for this user.' });
+        console.log("🚀 ~ exports.getUserQuestions= ~ questions:", questions)
+        if (questions.length==0) {
+            return res.status(404).json({ message: 'No questions found for this Level.' });
         }
 
         await generateLearning(questions, user.progress)
@@ -127,6 +128,55 @@ exports.getUserQuestions = async (req, res) => {
                 });
             });
 
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error.' });
+    }
+
+}
+exports.getQuizQuestions = async (req, res) => {
+    const { id } = req.params;
+    console.log("🚀 ~ exports.getUserQuestions= ~ id:", id)
+
+    try {
+        const user = await db3.users.findUnique({
+            where: { user_id: Number(id) },
+        })
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+
+        if (!user.currentLevel) {
+            return res.status(400).json({ message: 'Please complete practice questions' });
+
+        }
+
+
+
+
+        const questions = await db3.questions.findMany({
+            where: {
+                isQuiz: true,
+                level: {
+                    level_name: user.currentLevel
+
+                }
+            },
+            include: {
+                level: true
+            }
+        });
+        console.log("🚀 ~ exports.getQuizQuestions= ~ questions:", questions)
+        if (!questions) {
+            return res.status(404).json({ message: 'No questions found for this Level.' });
+        }
+
+
+        res.json({
+            questions: questions, user: user
+        });
 
     } catch (error) {
         console.error(error);
@@ -211,6 +261,65 @@ exports.submitSubLevel = async (req, res) => {
         res.status(400).json({ message: error.message || "Server error" });
     }
 };
+exports.submitQuiz = async (req, res) => {
+    const { user_id, level_id, correct_answers, total_questions } = req.body;
+    console.log("🚀 ~ exports.submitQuiz= ~ user_id:", user_id);
+    console.log("🚀 ~ exports.submitQuiz= ~ total_questions:", total_questions);
+    console.log("🚀 ~ exports.submitQuiz= ~ correct_answers:", correct_answers);
+    console.log("🚀 ~ exports.submitQuiz= ~ level_id:", level_id);
+    try {
+
+        const newPerformance = await db3.performance.create({
+            data: {
+                user_id: Number(user_id),
+                level_id: Number(level_id),
+                sublevel_id: Number(level_id),
+                correct_answers: correct_answers,
+                total_questions: total_questions,
+                quiz_score: Math.floor((correct_answers / total_questions) * 100)
+            }
+        });
+
+        const progressPercent = 0;
+
+        const levels = await db3.levels.findMany({
+            orderBy: { level_id: 'asc' },
+            include: {
+                sublevels: {
+                    orderBy: { sublevel_id: 'asc' }
+                }
+            }
+        });
+
+        const currentLevelIndex = levels.findIndex(l => l.level_id === Number(level_id));
+
+        let nextLevelName = null;
+        let nextSubLevelId = null;
+
+        if (currentLevelIndex !== -1 && currentLevelIndex < levels.length - 1) {
+            const nextLevel = levels[currentLevelIndex + 1];
+            nextLevelName = nextLevel.level_name;
+            nextSubLevelId = nextLevel.sublevels.length > 0 ? nextLevel.sublevels[0].sublevel_id : null;
+        }
+
+        const user = await db3.users.update({
+            where: { user_id: Number(user_id) },
+            data: {
+                currentLevel: nextLevelName,
+                currentSublevel: null
+            }
+        });
+
+        return res.status(200).json({
+            message: "Performance record created for sublevel.",
+            performance: newPerformance,
+            progress: progressPercent,
+        });
+    } catch (error) {
+        res.status(400).json({ message: error.message || "Server error" });
+    }
+};
+
 
 
 
@@ -220,45 +329,39 @@ exports.addQuestion = async (req, res) => {
             level_id,
             question_text,
             game,
-
+            isQuiz,
             colorUp_shape,
             colorUp_totalItem,
             colorUp_coloredCount,
-
             sort_order,
             sort_shape,
             sort_totalItem,
-
             box_shape,
             box_firstBoxCount,
             box_secondBoxCount,
-
             equation_shape,
             equation_operation,
             equation_finalBoxcount,
             equation_firstBoxCount,
             equation_secondBoxCount,
         } = req.body;
-
+        console.log(req.body)
 
         const q = await db3.questions.create({
             data: {
                 level_id: Number(level_id),
                 question_text,
                 game,
-
+                isQuiz: isQuiz ? Boolean(isQuiz) : false,
                 colorUp_shape,
                 colorUp_totalItem: colorUp_totalItem ? Number(colorUp_totalItem) : null,
                 colorUp_coloredCount: colorUp_coloredCount ? Number(colorUp_coloredCount) : null,
-
                 sort_order,
                 sort_shape,
                 sort_totalItem: sort_totalItem ? Number(sort_totalItem) : null,
-
                 box_shape,
                 box_firstBoxCount: box_firstBoxCount ? Number(box_firstBoxCount) : null,
                 box_secondBoxCount: box_secondBoxCount ? Number(box_secondBoxCount) : null,
-
                 equation_shape,
                 equation_operation,
                 equation_finalBoxcount: equation_finalBoxcount ? Number(equation_finalBoxcount) : null,
