@@ -29,14 +29,57 @@ exports.getUserQuestions = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
-        let currentUserLevel = user.currentLevel
+
+        let userSubLevel = user.currentSublevel;
+        let currentUserLevel = user.currentLevel;
+        console.log("🚀 ~ exports.getUserQuestions= ~ currentUserLevel:", currentUserLevel);
 
         if (!currentUserLevel) {
             const levels = await db3.levels.findMany({
                 orderBy: { level_id: 'asc' },
-            })
-            currentUserLevel = levels[0].level_name
+                include: {
+                    sublevels: true,
+                },
+            });
+
+            if (levels.length > 0) {
+                const firstLevel = levels[0];
+                const sbIndex = firstLevel.sublevels.findIndex(
+                    (item) => item.sublevel_id === user.currentSublevel
+                );
+                console.log("🚀 ~ exports.getUserQuestions= ~ sbIndex:", sbIndex)
+
+                userSubLevel =
+                    sbIndex > 0 ? firstLevel.sublevels[sbIndex - 1] : firstLevel.sublevels[0];
+
+                currentUserLevel = firstLevel.level_name;
+            }
         }
+        let isLastSublevel = false;
+
+        if (userSubLevel) {
+            const levels = await db3.levels.findMany({
+                orderBy: { level_id: 'asc' },
+                include: {
+                    sublevels: true,
+                },
+            });
+
+            const currentLevel = levels.find(
+                (level) => level.level_name === user.currentLevel
+            );
+
+            if (currentLevel && currentLevel.sublevels.length > 0) {
+                const sbIndex = currentLevel.sublevels.findIndex(
+                    (item) => item.sublevel_id === user.currentSublevel
+                );
+                console.log("🚀 ~ Current sublevel index:", sbIndex);
+
+                isLastSublevel = sbIndex === currentLevel.sublevels.length - 1;
+            }
+        }
+
+
         const questions = await db3.questions.findMany({
             where: {
                 level: {
@@ -47,27 +90,43 @@ exports.getUserQuestions = async (req, res) => {
                 level: true
             }
         });
-        console.log("🚀 ~ exports.getUserQuestions= ~ questions:", questions)
         if (!questions) {
             return res.status(404).json({ message: 'No questions found for this user.' });
         }
+
         await generateLearning(questions, user.progress)
             .then((sortedQuestions) => {
-                console.log("🚀 ~ .then ~ sortedQuestions:", sortedQuestions)
                 const sortedQuestionsWithLevel = sortedQuestions.map((question) => {
                     const questionWithLevel = questions.find(q => q.question_id === question.questionId);
                     return {
                         ...questionWithLevel
                     };
                 })
-                console.log("🚀 ~ sortedQuestionsWithLevel ~ sortedQuestionsWithLevel:", sortedQuestionsWithLevel)
-                res.json({ questions: sortedQuestionsWithLevel, user });
+                if (user.currentLevel) {
+
+                    res.json({
+                        questions: sortedQuestionsWithLevel.slice().reverse(), user: {
+                            ...user, userSubLevel, isLastSublevel
+                        }
+                    });
+                } else {
+
+                    res.json({
+                        questions: sortedQuestionsWithLevel, user: {
+                            ...user, userSubLevel, isLastSublevel
+                        }
+                    });
+                }
             })
             .catch((err) => {
                 console.error(err);
-                res.json({ questions: questions, user });
-
+                res.json({
+                    questions: questions, user: {
+                        ...user, userSubLevel, isLastSublevel
+                    }
+                });
             });
+
 
     } catch (error) {
         console.error(error);
@@ -77,13 +136,20 @@ exports.getUserQuestions = async (req, res) => {
 }
 
 exports.submitSubLevel = async (req, res) => {
-    const { user_id, level_id, correct_answers, total_questions, quiz_score } = req.body;
+    const { user_id, level_id, correct_answers, total_questions } = req.body;
+    console.log("🚀 ~ exports.submitSubLevel= ~ user_id:", user_id);
+    console.log("🚀 ~ exports.submitSubLevel= ~ total_questions:", total_questions);
+    console.log("🚀 ~ exports.submitSubLevel= ~ correct_answers:", correct_answers);
+    console.log("🚀 ~ exports.submitSubLevel= ~ level_id:", level_id);
     try {
         const subLevels = await db3.sublevels.findMany({
             where: {
                 level_id: Number(level_id)
             },
             orderBy: { sublevel_id: 'asc' }
+        });
+        const level = await db3.levels.findUnique({
+            where: { level_id: Number(level_id) }
         });
 
         const performanceRecords = await db3.performance.findMany({
@@ -98,7 +164,11 @@ exports.submitSubLevel = async (req, res) => {
             const completedSubLevelIds = performanceRecords.map(record => record.sublevel_id);
             targetSubLevel = subLevels.find(sub => !completedSubLevelIds.includes(sub.sublevel_id));
             if (!targetSubLevel) {
-                return res.status(200).json({ message: "All sublevels completed for this level." });
+                return res.status(200).json({
+                    message: "All sublevels completed for this level.",
+                    progress: 100,
+                    isLastSubLevel: true
+                });
             }
         } else {
             targetSubLevel = subLevels[0];
@@ -109,22 +179,39 @@ exports.submitSubLevel = async (req, res) => {
                 user_id: Number(user_id),
                 level_id: Number(level_id),
                 sublevel_id: targetSubLevel.sublevel_id,
-                correct_answers: 0,  
-                total_questions: 0,  
-                quiz_score: 0          
+                correct_answers: correct_answers,
+                total_questions: total_questions,
+                quiz_score: Math.floor((correct_answers / total_questions) * 100)
             }
         });
 
-            
+        const updatedCompletedCount = performanceRecords.length + 1;
+        const progressPercent = subLevels.length > 0
+            ? Math.floor((updatedCompletedCount / subLevels.length) * 100)
+            : 0;
+
+        // Check if the target sublevel is the last in the level
+        const isLastSubLevel = subLevels[subLevels.length - 1].sublevel_id === targetSubLevel.sublevel_id;
+
+        const user = await db3.users.update({
+            where: { user_id: Number(user_id) },
+            data: {
+                currentLevel: level.level_name,
+                currentSublevel: Number(targetSubLevel.sublevel_id)
+            }
+        });
 
         return res.status(200).json({
             message: "Performance record created for sublevel.",
-            performance: newPerformance
+            performance: newPerformance,
+            progress: progressPercent,
+            isLastSubLevel: isLastSubLevel
         });
     } catch (error) {
         res.status(400).json({ message: error.message || "Server error" });
     }
 };
+
 
 
 exports.addQuestion = async (req, res) => {

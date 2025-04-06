@@ -4,8 +4,6 @@ function buildSortingPrompt(questions, progress) {
         question: q.question_text,
         gameLabel: q.game
     }));
-    console.log("🚀 ~ buildSortingPrompt ~ slimQuestions:", slimQuestions);
-
     const messages = [
         {
             role: "system",
@@ -40,16 +38,16 @@ const axios = require("axios");
 require("dotenv").config();
 
 exports.generateLearning = async (questions, progress) => {
-    if (!questions || progress === undefined)
+    if (!questions)
         throw new Error("Both questions and progress are required.");
-
-    const messages = buildSortingPrompt(questions, progress);
+    let mainProgress = progress ? progress : 0
+    const messages = buildSortingPrompt(questions, mainProgress);
 
     const response = await axios.post(
         "https://api.openai.com/v1/chat/completions",
         {
             model: "gpt-3.5-turbo",
-            max_tokens: 1000, 
+            max_tokens: 1000,
             temperature: 0.3,
             messages
         },
@@ -62,7 +60,6 @@ exports.generateLearning = async (questions, progress) => {
     );
 
     let content = response.data.choices?.[0]?.message?.content?.trim() ?? "";
-    console.log("🚀 ~ exports.generateLearning=async ~ content:", content);
 
     content = content.replace(/^```[a-z]*\s*/, "").replace(/\s*```$/, "");
 

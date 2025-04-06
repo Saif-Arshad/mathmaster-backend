@@ -8,7 +8,6 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const practiceRoutes = require('./routes/practiceRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const initialQuizRoutes = require('./routes/initialQuizRoutes');
 
@@ -26,7 +25,6 @@ app.get('/', (req, res) => {
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/admin', adminRoutes);
-app.use('/practice', practiceRoutes);
 app.use('/quiz', quizRoutes);
 app.use('/initial-quiz', initialQuizRoutes);
 

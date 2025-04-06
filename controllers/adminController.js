@@ -64,6 +64,44 @@ const adminController = {
             res.status(500).json({ message: 'Server error on get all levels.' });
         }
     },
+    getAllLevels2: async (req, res) => {
+        try {
+            const user = await db3.users.findUnique({
+                where: {
+                    user_id: Number(req.user.user_id)
+                }
+            });
+
+            const currentLevel = user?.currentLevel;
+            console.log("🚀 ~ getAllLevels2: ~ currentLevel:", currentLevel)
+            const currentSub = user?.currentSublevel;
+            console.log("🚀 ~ getAllLevels2: ~ currentSub:", currentSub)
+
+            let levels = await db3.levels.findMany({ include: { sublevels: true } });
+
+            console.log("🚀 ~ getAllLevels2: ~ levels:", levels)
+            if (currentLevel && currentSub) {
+                levels = levels.map(level => {
+                    if (level.level_name === currentLevel) {
+                        return {
+                            ...level,
+                            sublevels: level.sublevels.map(sub => ({
+                                ...sub,
+                                isCompleted: sub.sublevel_id <= currentSub
+                            }))
+                        };
+                    }
+                    return level;
+                });
+            }
+            console.log(levels.filter((item) => item.level_id == 2)[0].sublevels)
+            res.json(levels);
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Server error on get all levels.' });
+        }
+    },
+
 
     addLevel: async (req, res) => {
         try {

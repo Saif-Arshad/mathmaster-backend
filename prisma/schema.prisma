@@ -16,7 +16,7 @@ model users {
   is_blocked        Boolean       @default(false)
   is_verified       Boolean       @default(false)
   initialPercentage Int?
-  currentLevel      Int?
+  currentLevel      String?
   currentSublevel   Int?
   otps              otps[]
   performance       performance[]
@@ -68,7 +68,6 @@ model questions {
   equation_secondBoxCount Int?
   level                   levels  @relation(fields: [level_id], references: [level_id])
 }
-
 
 model performance {
   performance_id  Int    @id @default(autoincrement())

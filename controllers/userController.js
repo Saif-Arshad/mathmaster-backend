@@ -20,7 +20,7 @@ const userController = {
                         }
                     },
                     select: {
-                        sublevel: true
+                        sublevel_id: true
                     }
                 });
 
