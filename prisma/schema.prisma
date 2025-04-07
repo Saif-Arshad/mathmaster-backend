@@ -47,6 +47,15 @@ model sublevels {
   createdAt            DateTime @default(now())
 }
 
+model Hint {
+  hint_id   Int     @id @default(autoincrement())
+  game      String
+  operation String
+  image     String?
+
+  questions questions[]
+}
+
 model questions {
   question_id             Int     @id @default(autoincrement())
   level_id                Int
@@ -64,10 +73,12 @@ model questions {
   box_secondBoxCount      Int?
   equation_shape          String?
   equation_operation      String?
+  hint_id                 Int?
   equation_finalBoxcount  Int?
   equation_firstBoxCount  Int?
-  equation_secondBoxCount Int?
+  hint                    Hint?   @relation(fields: [hint_id], references: [hint_id])
   level                   levels  @relation(fields: [level_id], references: [level_id])
+  equation_secondBoxCount Int?
 }
 
 model performance {

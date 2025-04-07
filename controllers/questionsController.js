@@ -29,7 +29,7 @@ exports.getUserQuestions = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
-        if(user.is_blocked){
+        if (user.is_blocked) {
             return res.status(403).json({ message: 'You are blocked.' });
         }
 
@@ -90,11 +90,12 @@ exports.getUserQuestions = async (req, res) => {
                 }
             },
             include: {
-                level: true
+                level: true,
+                hint: true
             }
         });
         console.log("🚀 ~ exports.getUserQuestions= ~ questions:", questions)
-        if (questions.length==0) {
+        if (questions.length == 0) {
             return res.status(404).json({ message: 'No questions found for this Level.' });
         }
 
@@ -155,7 +156,6 @@ exports.getQuizQuestions = async (req, res) => {
 
         if (!user.currentLevel) {
             return res.status(400).json({ message: 'Please complete practice questions' });
-
         }
 
 
