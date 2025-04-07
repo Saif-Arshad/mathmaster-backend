@@ -5,6 +5,7 @@ const verifyToken = require('../middleware/verifyToken');
 
 router.get('/profile', verifyToken, userController.getProfile);
 router.get('/:id', userController.getUserInfo);
+router.get('/report/:id', userController.generateUserReport);
 router.post('/submit-inital', userController.updateInitialPercentage);
 
 module.exports = router;
