@@ -1,7 +1,7 @@
 
 const UserModel2 = require('../models/User');
 const db7 = require('../config/db');
-
+const PDFDocument = require('pdfkit');
 const userController = {
     getProfile: async (req, res) => {
         try {
@@ -10,39 +10,7 @@ const userController = {
             if (!user) return res.status(404).json({ message: 'User not found.' });
 
             delete user.password;
-            if (user.currentLevel) {
-
-                const performance = await db7.performance.findMany({
-                    where: {
-                        user_id,
-                        level: {
-                            level_name: user.currentLevel
-                        }
-                    },
-                    select: {
-                        sublevel_id: true
-                    }
-                });
-
-                const completedSubLevels = performance.map((p) => p.sublevel);
-                const allSubLevels = await db7.sublevels.findMany({
-                    where: {
-                        level: {
-                            level_name: user.currentLevel
-                        }
-                    },
-                    orderBy: { sublevel_id: 'asc' }
-                });
-
-                const progressPercent = allSubLevels.length > 0
-                    ? Math.floor((completedSubLevels.length / allSubLevels.length) * 100)
-                    : 0;
-
-                user.progress = progressPercent;
-            }
-            else {
-                user.progress = 0;
-            }
+            user.progress = 0;
 
             res.json(user);
         } catch (err) {
@@ -59,39 +27,8 @@ const userController = {
             if (!user) return res.status(404).json({ message: 'User not found.' });
 
             delete user.password;
-            if (user.currentLevel) {
-
-                const performance = await db7.performance.findMany({
-                    where: {
-                        user_id,
-                        level: {
-                            level_name: user.currentLevel
-                        }
-                    },
-                    select: {
-                        sublevel_id: true
-                    }
-                });
-
-                const completedSubLevels = performance.map((p) => p.sublevel);
-                const allSubLevels = await db7.sublevels.findMany({
-                    where: {
-                        level: {
-                            level_name: user.currentLevel
-                        }
-                    },
-                    orderBy: { sublevel_id: 'asc' }
-                });
-
-                const progressPercent = allSubLevels.length > 0
-                    ? Math.floor((completedSubLevels.length / allSubLevels.length) * 100)
-                    : 0;
-
-                user.progress = progressPercent;
-            }
-            else {
+         
                 user.progress = 0;
-            }
             user.progressData = await db7.performance.findMany({
                 where: {
                     user_id,
@@ -136,7 +73,82 @@ const userController = {
             console.error(err);
             res.status(500).json({ message: 'Server error while updating initial percentage.' });
         }
-    }
+    },
+    generateUserReport : async (req, res) => {
+        try {
+            const { id } = req.params;
+            console.log("🚀 ~ generateUserReport: ~ id:", id)
+            const user_id = id
+            if (!user_id) {
+                return res.status(400).json({ message: 'User id is required.' });
+            }
+    
+            const user = await db7.users.findUnique({
+                where: { user_id: Number(user_id) },
+                include: {
+                    performance: {
+                        include: {
+                            level: true,
+                        },
+                    },
+                },
+            });
+    
+            if (!user) {
+                return res.status(404).json({ message: 'User not found.' });
+            }
+    
+            const doc = new PDFDocument({ margin: 50 });
+    
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=report_user_${user_id}.pdf`);
+    
+            doc.pipe(res);
+    
+            doc.fontSize(25)
+                .fillColor('#333')
+                .text('User Performance Report', { align: 'center' });
+            doc.moveDown(2);
+    
+            doc.fontSize(18)
+                .fillColor('#000')
+                .text('User Information', { underline: true });
+            doc.moveDown();
+    
+            doc.fontSize(12)
+                .text(`Username: ${user.username}`)
+                .text(`Email: ${user.email}`)
+                .text(`Age: ${user.age}`)
+                .text(`Initial Percentage: ${user.initialPercentage || 'N/A'}`)
+                .text(`Current Level: ${user.currentLevel || 'N/A'}`);
+            doc.moveDown(2);
+    
+            doc.fontSize(18)
+                .text('Quiz Performances', { underline: true });
+            doc.moveDown();
+    
+            if (user.performance.length === 0) {
+                doc.fontSize(12).text('No quiz performance records available.');
+            } else {
+                user.performance.forEach((perf, index) => {
+                    doc.fontSize(14)
+                        .fillColor('#00529B')
+                        .text(`Quiz ${index + 1}:`, { continued: true })
+                        .fillColor('#000')
+                        .text(` Level: ${perf.level.level_name}`);
+                    doc.fontSize(12)
+                        .text(`   Score: ${perf.quiz_score}%`)
+                        .text(`   Correct Answers: ${perf.correct_answers} / ${perf.total_questions}`)
+                        .text(`   Result: ${perf.isFailed ? 'Fail' : 'Pass'}`);
+                    doc.moveDown();
+                });
+            }
+    
+            doc.end();
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Server error while generating report.' });
+        }
+    },
 };
-
 module.exports = userController;

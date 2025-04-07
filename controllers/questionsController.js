@@ -58,30 +58,14 @@ exports.getUserQuestions = async (req, res) => {
                 currentUserLevel = firstLevel.level_name;
             }
         }
-        let isLastSublevel = false;
 
-        if (userSubLevel) {
-            const levels = await db3.levels.findMany({
-                orderBy: { level_id: 'asc' },
-                include: {
-                    sublevels: true,
-                },
-            });
-
-            const currentLevel = levels.find(
-                (level) => level.level_name === user.currentLevel
-            );
-
-            if (currentLevel && currentLevel.sublevels.length > 0) {
-                const sbIndex = currentLevel.sublevels.findIndex(
-                    (item) => item.sublevel_id === user.currentSublevel
-                );
-                console.log("🚀 ~ Current sublevel index:", sbIndex);
-
-                isLastSublevel = sbIndex === currentLevel.sublevels.length - 1;
+        const sublevels = await db3.sublevels.findMany({
+            where: {
+                level: {
+                    level_name: currentUserLevel
+                }
             }
-        }
-
+        })
 
         const questions = await db3.questions.findMany({
             where: {
@@ -111,15 +95,15 @@ exports.getUserQuestions = async (req, res) => {
 
                     res.json({
                         questions: sortedQuestionsWithLevel.slice().reverse(), user: {
-                            ...user, userSubLevel, isLastSublevel
-                        }
+                            ...user, userSubLevel
+                        }, sublevels
                     });
                 } else {
 
                     res.json({
                         questions: sortedQuestionsWithLevel, user: {
-                            ...user, userSubLevel, isLastSublevel
-                        }
+                            ...user, userSubLevel
+                        }, sublevels
                     });
                 }
             })
@@ -127,8 +111,8 @@ exports.getUserQuestions = async (req, res) => {
                 console.error(err);
                 res.json({
                     questions: questions, user: {
-                        ...user, userSubLevel, isLastSublevel
-                    }
+                        ...user, userSubLevel
+                    }, sublevels
                 });
             });
 
@@ -141,7 +125,6 @@ exports.getUserQuestions = async (req, res) => {
 }
 exports.getQuizQuestions = async (req, res) => {
     const { id } = req.params;
-    console.log("🚀 ~ exports.getUserQuestions= ~ id:", id)
 
     try {
         const user = await db3.users.findUnique({
@@ -153,9 +136,18 @@ exports.getQuizQuestions = async (req, res) => {
         if (user.is_blocked) {
             return res.status(403).json({ message: 'You are blocked.' });
         }
+        let currentLevel;
 
         if (!user.currentLevel) {
-            return res.status(400).json({ message: 'Please complete practice questions' });
+            const firstLevel = await db3.levels.findFirst({
+                orderBy: { level_id: 'asc' }
+            });
+
+            if (!firstLevel) {
+                return res.status(404).json({ message: 'No levels found in the system' });
+            }
+            currentLevel = firstLevel
+
         }
 
 
@@ -165,7 +157,7 @@ exports.getQuizQuestions = async (req, res) => {
             where: {
                 isQuiz: true,
                 level: {
-                    level_name: user.currentLevel
+                    level_name: currentLevel.level_name
 
                 }
             },
@@ -180,7 +172,7 @@ exports.getQuizQuestions = async (req, res) => {
 
 
         res.json({
-            questions: questions, user: user
+            questions: questions, user: user, level: currentLevel,
         });
 
     } catch (error) {
@@ -192,75 +184,42 @@ exports.getQuizQuestions = async (req, res) => {
 
 exports.submitSubLevel = async (req, res) => {
     const { user_id, level_id, correct_answers, total_questions } = req.body;
-    console.log("🚀 ~ exports.submitSubLevel= ~ user_id:", user_id);
-    console.log("🚀 ~ exports.submitSubLevel= ~ total_questions:", total_questions);
-    console.log("🚀 ~ exports.submitSubLevel= ~ correct_answers:", correct_answers);
-    console.log("🚀 ~ exports.submitSubLevel= ~ level_id:", level_id);
     try {
-        const subLevels = await db3.sublevels.findMany({
-            where: {
-                level_id: Number(level_id)
-            },
-            orderBy: { sublevel_id: 'asc' }
-        });
+
         const level = await db3.levels.findUnique({
             where: { level_id: Number(level_id) }
         });
 
-        const performanceRecords = await db3.performance.findMany({
-            where: {
-                user_id: Number(user_id),
-                level_id: Number(level_id)
-            }
-        });
-
-        let targetSubLevel;
-        if (performanceRecords.length > 0) {
-            const completedSubLevelIds = performanceRecords.map(record => record.sublevel_id);
-            targetSubLevel = subLevels.find(sub => !completedSubLevelIds.includes(sub.sublevel_id));
-            if (!targetSubLevel) {
-                return res.status(200).json({
-                    message: "All sublevels completed for this level.",
-                    progress: 100,
-                    isLastSubLevel: true
-                });
-            }
-        } else {
-            targetSubLevel = subLevels[0];
-        }
+        const passingMarksPercentage = level.min_passing_percentage;
+        const currentPercentage = Math.floor((correct_answers / total_questions) * 100);
+        const isFail = currentPercentage < passingMarksPercentage;
 
         const newPerformance = await db3.performance.create({
             data: {
                 user_id: Number(user_id),
                 level_id: Number(level_id),
-                sublevel_id: targetSubLevel.sublevel_id,
                 correct_answers: correct_answers,
                 total_questions: total_questions,
-                quiz_score: Math.floor((correct_answers / total_questions) * 100)
+                isFailed: isFail,
+                quiz_score: currentPercentage
             }
         });
 
-        const updatedCompletedCount = performanceRecords.length + 1;
-        const progressPercent = subLevels.length > 0
-            ? Math.floor((updatedCompletedCount / subLevels.length) * 100)
-            : 0;
+       
+if(!isFail){
 
-        // Check if the target sublevel is the last in the level
-        const isLastSubLevel = subLevels[subLevels.length - 1].sublevel_id === targetSubLevel.sublevel_id;
-
-        const user = await db3.users.update({
-            where: { user_id: Number(user_id) },
-            data: {
-                currentLevel: level.level_name,
-                currentSublevel: Number(targetSubLevel.sublevel_id)
-            }
-        });
+    const user = await db3.users.update({
+        where: { user_id: Number(user_id) },
+        data: {
+            currentLevel: level.level_name,
+        }
+    });
+}
 
         return res.status(200).json({
             message: "Performance record created for sublevel.",
             performance: newPerformance,
             progress: progressPercent,
-            isLastSubLevel: isLastSubLevel
         });
     } catch (error) {
         res.status(400).json({ message: error.message || "Server error" });
@@ -268,20 +227,29 @@ exports.submitSubLevel = async (req, res) => {
 };
 exports.submitQuiz = async (req, res) => {
     const { user_id, level_id, correct_answers, total_questions } = req.body;
-    console.log("🚀 ~ exports.submitQuiz= ~ user_id:", user_id);
-    console.log("🚀 ~ exports.submitQuiz= ~ total_questions:", total_questions);
-    console.log("🚀 ~ exports.submitQuiz= ~ correct_answers:", correct_answers);
-    console.log("🚀 ~ exports.submitQuiz= ~ level_id:", level_id);
+    console.log("🚀 ~ exports.submitQuiz= ~ user_id:", user_id)
+    console.log("🚀 ~ exports.submitQuiz= ~ total_questions:", total_questions)
+    console.log("🚀 ~ exports.submitQuiz= ~ correct_answers:", correct_answers)
+    console.log("🚀 ~ exports.submitQuiz= ~ level_id:", level_id)
+
     try {
+        const level = await db3.levels.findUnique({
+            where: { level_id: Number(level_id) }
+        });
+
+        const passingMarksPercentage = level.min_passing_percentage;
+        const currentPercentage = Math.floor((correct_answers / total_questions) * 100);
+        const isFail = currentPercentage < passingMarksPercentage;
+        const result = isFail ? "fail" : "pass";
 
         const newPerformance = await db3.performance.create({
             data: {
                 user_id: Number(user_id),
                 level_id: Number(level_id),
-                sublevel_id: Number(level_id),
                 correct_answers: correct_answers,
                 total_questions: total_questions,
-                quiz_score: Math.floor((correct_answers / total_questions) * 100)
+                isFailed: isFail,
+                quiz_score: currentPercentage
             }
         });
 
@@ -297,6 +265,7 @@ exports.submitQuiz = async (req, res) => {
         });
 
         const currentLevelIndex = levels.findIndex(l => l.level_id === Number(level_id));
+        console.log("🚀 ~ exports.submitQuiz= ~ currentLevelIndex:", currentLevelIndex)
 
         let nextLevelName = null;
         let nextSubLevelId = null;
@@ -304,21 +273,24 @@ exports.submitQuiz = async (req, res) => {
         if (currentLevelIndex !== -1 && currentLevelIndex < levels.length - 1) {
             const nextLevel = levels[currentLevelIndex + 1];
             nextLevelName = nextLevel.level_name;
+            console.log("🚀 ~ exports.submitQuiz= ~ nextLevelName:", nextLevelName)
             nextSubLevelId = nextLevel.sublevels.length > 0 ? nextLevel.sublevels[0].sublevel_id : null;
         }
-
-        const user = await db3.users.update({
-            where: { user_id: Number(user_id) },
-            data: {
-                currentLevel: nextLevelName,
-                currentSublevel: null
-            }
-        });
+        if (!isFail) {
+            await db3.users.update({
+                where: { user_id: Number(user_id) },
+                data: {
+                    currentLevel: nextLevelName,
+                }
+            });
+        }
 
         return res.status(200).json({
-            message: "Performance record created for sublevel.",
+            message: `You have ${result}ed the quiz with a score of ${currentPercentage}%`,
             performance: newPerformance,
             progress: progressPercent,
+            result,
+            correctAnswers: correct_answers,
         });
     } catch (error) {
         res.status(400).json({ message: error.message || "Server error" });
@@ -351,12 +323,27 @@ exports.addQuestion = async (req, res) => {
             equation_secondBoxCount,
         } = req.body;
         console.log(req.body)
+        let operation = null;
+
+        const hints = await db3.hint.findMany({
+            where: {
+                game: game,
+                ...(operation && { operation: operation })
+            }
+        });
+        console.log("🚀 ~ exports.addQuestion= ~ hints:", hints);
+
+        let hint_id = null;
+        if (hints.length > 0) {
+            hint_id = hints[0].hint_id;
+        }
 
         const q = await db3.questions.create({
             data: {
                 level_id: Number(level_id),
                 question_text,
                 game,
+                hint_id,
                 isQuiz: isQuiz ? Boolean(isQuiz) : false,
                 colorUp_shape,
                 colorUp_totalItem: colorUp_totalItem ? Number(colorUp_totalItem) : null,

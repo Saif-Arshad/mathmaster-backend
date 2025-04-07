@@ -82,15 +82,15 @@ model questions {
 }
 
 model performance {
-  performance_id  Int    @id @default(autoincrement())
+  performance_id  Int     @id @default(autoincrement())
   user_id         Int
   level_id        Int
-  sublevel_id     Int
   correct_answers Int
   total_questions Int
   quiz_score      Float
-  user            users  @relation(fields: [user_id], references: [user_id])
-  level           levels @relation(fields: [level_id], references: [level_id])
+  isFailed        Boolean @default(false)
+  user            users   @relation(fields: [user_id], references: [user_id])
+  level           levels  @relation(fields: [level_id], references: [level_id])
 }
 
 model otps {
